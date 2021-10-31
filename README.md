@@ -1,4 +1,4 @@
-# ImgGen
+# ImGen
 Image generation from scene graphs
 
 ## Authors
