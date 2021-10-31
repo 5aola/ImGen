@@ -17,6 +17,7 @@ Image generation from scene graphs
   - Minimum 1 object has to be on the image
   - Maximum 4 objects can be on the image
   - If the object mask is too small (its smaller than the original picture times 0.02) then sort It out
+- The data compiling is in [SceneGraphGeneration.ipynb](/SceneGraphGeneration.ipynb)
 
 ### CocoSceneGraphDataset class
 - In order to make the loading of the pictures and annotations straightforward, we made an individual class for this purpose.
