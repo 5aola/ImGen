@@ -21,36 +21,38 @@ from prepareData.prepareData import coco_collate_fn, build_coco_dsets
 
 def build_loaders(args):
 
-    vocab, train_dset, val_dset = build_coco_dsets(args)
+    print("In build_loaders")
+    print(args)
+    vocab, train_dset, val_dset = build_coco_dsets()
     collate_fn = coco_collate_fn
 
     loader_kwargs = {
-        'batch_size': args.batch_size,
-        'num_workers': args.loader_num_workers,
+        'batch_size': args["batch_size"],
+        'num_workers': args["num_workers"],
         'shuffle': True,
         'collate_fn': collate_fn,
     }
 
     train_loader = DataLoader(train_dset, **loader_kwargs)
 
-    loader_kwargs['shuffle'] = args.shuffle_val
+    loader_kwargs['shuffle'] = args["shuffle"]
     val_loader = DataLoader(val_dset, **loader_kwargs)
     return vocab, train_loader, val_loader
 
 def build_model(args, vocab):
   kwargs = {
       'vocab': vocab,
-      'image_size': args.image_size,
-      'embedding_dim': args.embedding_dim,
-      'gconv_dim': args.gconv_dim,
-      'gconv_hidden_dim': args.gconv_hidden_dim,
-      'gconv_num_layers': args.gconv_num_layers,
-      'mlp_normalization': args.mlp_normalization,
-      'refinement_dims': args.refinement_network_dims,
-      'normalization': args.normalization,
-      'activation': args.activation,
-      'mask_size': args.mask_size,
-      'layout_noise_dim': args.layout_noise_dim,
+      'image_size': args['image_size'],
+      'embedding_dim': args['embedding_dim'],
+      'gconv_dim': args['gconv_dim'],
+      'gconv_hidden_dim': args['gconv_hidden_dim'],
+      'gconv_num_layers': args['gconv_num_layers'],
+      'mlp_normalization': args['mlp_normalization'],
+      'refinement_dims': args['refinement_dims'],
+      'normalization': args['normalization'],
+      'activation': args['activation'],
+      'mask_size': args['mask_size'],
+      'layout_noise_dim': args['layout_noise_dim'],
     }
   model = GraphConvModel(**kwargs)
   return model, kwargs
@@ -135,6 +137,7 @@ def check_model(args, t, loader, model):
 '''
 
 def main(args):
+
     print(args)
     float_dtype = torch.cuda.FloatTensor
     long_dtype = torch.cuda.LongTensor
@@ -148,7 +151,7 @@ def main(args):
 
     t, epoch = 0, 0
     checkpoint = {
-        'args': args.__dict__,
+        'args': args,
         'vocab': vocab,
         'model_kwargs': model_kwargs,
         'losses_ts': [],
@@ -175,10 +178,13 @@ def main(args):
     }
 
     while True:
-        if t >= args.num_iterations:
+
+        print('Starting epoch %d' % epoch)
+
+        if t >= args['num_iterations']:
             break
         epoch += 1
-        print('Starting epoch %d' % epoch)
+
 
         for batch in train_loader:
             '''
@@ -199,14 +205,14 @@ def main(args):
 
             #predicates = triples[:, 1]
 
-            with timeit('forward', args.timing):
-                model_boxes = boxes
-                model_masks = masks
-                model_out = model(objs, triples, obj_to_img,
-                                  boxes_gt=model_boxes, masks_gt=model_masks)
-                #imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
-                vector = model_out
-                print(vector)
+            # with timeit('forward', args['timing']): #args['timing']
+            model_boxes = boxes
+            model_masks = masks
+            model_out = model(objs, triples, obj_to_img,
+                              boxes_gt=model_boxes, masks_gt=model_masks)
+            #imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
+            vector = model_out
+            print(vector)
 
             '''    
             with timeit('loss', args.timing):
@@ -294,4 +300,33 @@ def main(args):
 
 if __name__ == '__main__':
 
-    main()
+    print(torch.cuda.is_available())
+
+
+    args = {
+        'batch_size': 32,
+        'num_workers': 4,
+        'shuffle': True,
+        'collate_fn': 10,
+
+        'image_size': (64, 64),
+        'embedding_dim': 128,
+        'gconv_dim': 128,
+        'gconv_hidden_dim': 512,
+        'gconv_num_layers': 5,
+        'mlp_normalization': 'batch',
+        'refinement_dims': (1024, 512, 256, 128, 64),
+        'normalization': 'batch',
+        'activation': 'relu',
+        'mask_size': 16,
+        'layout_noise_dim': 32,
+        'num_iterations': 1000000,
+        'learning_rate': 0.0001,
+        'dataset': "coco",
+        'num_train_samples': 900,
+        'num_val_samples': 100,
+        'timing': '1',
+
+    }
+
+    main(args)

@@ -174,4 +174,4 @@ class Sg2ImModel(nn.Module):
         img = self.refinement_net(layout)
         
         '''
-        return img, boxes_pred, masks_pred, rel_scores
+        return  boxes_pred, masks_pred, rel_scores

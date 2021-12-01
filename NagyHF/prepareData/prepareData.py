@@ -14,11 +14,11 @@ from skimage.transform import resize as imresize
 
 
 
-def build_coco_dsets(args):
+def build_coco_dsets():
 
   dset_kwargs = {
-    'image_dir': "../train2017/train2017",
-    'instances_json': "../annotations_trainval2017/annotations/instances_train2017.json"
+    'image_dir': "../../../train2017/train2017",
+    'instances_json': "../../../annotations_trainval2017/annotations/instances_train2017.json"
   }
   
   train_dset = CocoSceneGraphDataset(**dset_kwargs)
@@ -27,10 +27,6 @@ def build_coco_dsets(args):
   print('Training dataset has %d images and %d objects' % (num_imgs, num_objs))
   print('(%.2f objects per image)' % (float(num_objs) / num_imgs))
 
-  dset_kwargs['image_dir'] = args.coco_val_image_dir
-  dset_kwargs['instances_json'] = args.coco_val_instances_json
-  dset_kwargs['stuff_json'] = args.coco_val_stuff_json
-  dset_kwargs['max_samples'] = args.num_val_samples
   val_dset = CocoSceneGraphDataset(**dset_kwargs)
 
   assert train_dset.vocab == val_dset.vocab
