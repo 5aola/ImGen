@@ -6,7 +6,7 @@ Image generation from scene graphs
 - Márton Tárnok (GGDVB2)
 - Domonkos Kostyál (O32YUM)
 
-## compiling the dataset
+## Compiling the dataset
 - We downloaded the **COCO** train database from these links:
   - The images:       http://images.cocodataset.org/zips/train2017.zip
   - The annotations (relationships, object,  masks, etc.):  http://images.cocodataset.org/annotations/annotations_trainval2017.zip
@@ -22,3 +22,25 @@ Image generation from scene graphs
 ### CocoSceneGraphDataset class
 - In order to make the loading of the pictures and annotations straightforward, we made an individual class for this purpose.
 - We transformed this class from the [**sg2im**](https://github.com/google/sg2im) project that also uses and processes the **COCO** dataset.
+
+## Second milestone
+We decided to change up for PyCharm IDE instead of Jupyter, because as the project got bigger we needed better structure and intellisense.
+
+### Graph Convolutional Networks (GCN)
+ - To convert graphs into train data we used graph convolutional network
+ - The goal of the this network to convert the graph to a vector, that represents the relation (edges and vertices) of the original scene graph
+ - This network takes a object_vector, predicat_vectors and edges
+ - We use Embedding network to convert objects and predicates into vectors(dim is 64)
+ - The edges are vectors that represent the relationship
+ - This model returns with object and predicate that contains the knowledge of their own relations
+
+### Box and Masknets
+  - These two nets are trained at the same time
+  - Both networks are using object_vectors (the output of the GCN) for training
+  - Boxnet is an MLP (Sequential model of linear, batchnorm1D and dropout layers usimg Relu Activation)
+  - Masknet is a CNN (Sequential model of UpSample, BatchNorm2D, Conv2D, and ReLU layers)
+  - Outputs are box_predicates and mask_predicates
+
+### Training our model
+  - We trained the model on NVIDIA 1060 GPU with cuda for a whole night but due to lack of computational resource, we couldn't build an accurate model
+  - The imporvement was visible, but there is plenty of  room for improvement with parameter and code optimalization
