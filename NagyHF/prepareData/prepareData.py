@@ -16,18 +16,24 @@ from skimage.transform import resize as imresize
 
 def build_coco_dsets():
 
-  dset_kwargs = {
-    'image_dir': "../../../train2017/train2017",
-    'instances_json': "../../../annotations_trainval2017/annotations/instances_train2017.json"
+  dset_kwargs_train = {
+    'image_dir': "C:/Users/kosty/Desktop/ImGen/ImGen/im_dataset/train2017",
+    'instances_json': "C:/Users/kosty/Desktop/ImGen/ImGen/im_dataset/annotations_trainval2017/annotations/instances_train2017.json"
   }
   
-  train_dset = CocoSceneGraphDataset(**dset_kwargs)
+  train_dset = CocoSceneGraphDataset(**dset_kwargs_train)
   num_objs = train_dset.total_objects()
   num_imgs = len(train_dset)
   print('Training dataset has %d images and %d objects' % (num_imgs, num_objs))
   print('(%.2f objects per image)' % (float(num_objs) / num_imgs))
 
-  val_dset = CocoSceneGraphDataset(**dset_kwargs)
+
+  dset_kwargs_val = {
+    'image_dir': "C:/Users/kosty/Desktop/ImGen/ImGen/im_dataset/val2017",
+    'instances_json': "C:/Users/kosty/Desktop/ImGen/ImGen/im_dataset/annotations_trainval2017/annotations/instances_val2017.json"
+  }
+
+  val_dset = CocoSceneGraphDataset(**dset_kwargs_val)
 
   assert train_dset.vocab == val_dset.vocab
   vocab = json.loads(json.dumps(train_dset.vocab))
@@ -37,7 +43,7 @@ def build_coco_dsets():
 
 class CocoSceneGraphDataset(Dataset):
   def __init__(self, image_dir, instances_json, stuff_json=None,
-               stuff_only=True, image_size=(64, 64), mask_size=16,
+               stuff_only=False, image_size=(64, 64), mask_size=16,
                normalize_images=True, max_samples=None,
                include_relationships=True, min_object_size=0.02,
                min_objects_per_image=3, max_objects_per_image=8,

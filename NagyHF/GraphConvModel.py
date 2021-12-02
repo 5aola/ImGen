@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 
-from graph import GraphTripleConvNet
+from graph import GraphTripleConvNet, build_mlp
 
 
 class GraphConvModel(nn.Module):
@@ -23,6 +23,8 @@ class GraphConvModel(nn.Module):
 
         self.vocab = vocab
 
+        self.image_size = image_size
+
         num_objs = len(vocab['object_idx_to_name'])
         num_preds = len(vocab['pred_idx_to_name'])
         self.obj_embeddings = nn.Embedding(num_objs + 1, embedding_dim)
@@ -36,6 +38,28 @@ class GraphConvModel(nn.Module):
             'mlp_normalization': mlp_normalization,
         }
         self.gconv_net = GraphTripleConvNet(**gconv_kwargs)
+
+        box_net_dim = 4
+        box_net_layers = [gconv_dim, gconv_hidden_dim, box_net_dim]
+        self.box_net = build_mlp(box_net_layers, batch_norm=mlp_normalization)
+
+        self.mask_net = None
+        if mask_size is not None and mask_size > 0:
+            self.mask_net = self._build_mask_net(num_objs, gconv_dim, mask_size)
+
+    def _build_mask_net(self, num_objs, dim, mask_size):
+        output_dim = 1
+        layers, cur_size = [], 1
+        while cur_size < mask_size:
+            layers.append(nn.Upsample(scale_factor=2, mode='nearest'))
+            layers.append(nn.BatchNorm2d(dim))
+            layers.append(nn.Conv2d(dim, dim, kernel_size=3, padding=1))
+            layers.append(nn.ReLU())
+            cur_size *= 2
+        if cur_size != mask_size:
+            raise ValueError('Mask size must be a power of 2')
+        layers.append(nn.Conv2d(dim, output_dim, kernel_size=1))
+        return nn.Sequential(*layers)
 
     def forward(self, objs, triples, obj_to_img=None,
                 boxes_gt=None, masks_gt=None):
@@ -53,11 +77,22 @@ class GraphConvModel(nn.Module):
           the spatial layout; if not given then use predicted boxes.
         """
 
+        O, T = objs.size(0), triples.size(0)
         s, p, o = triples.chunk(3, dim=1)  # All have shape (T, 1)
         s, p, o = [x.squeeze(1) for x in [s, p, o]]  # Now have shape (T,)
-        edges = torch.stack([s, o], dim=1)  # Shape is (T, 2)
+        edges = torch.stack([s, o], dim=1)
+
+
         obj_vecs = self.obj_embeddings(objs)
         pred_vecs = self.pred_embeddings(p)
         obj_vecs, pred_vecs = self.gconv_net(obj_vecs, pred_vecs, edges)
 
-        return obj_vecs, pred_vecs
+        boxes_pred = self.box_net(obj_vecs)
+
+        masks_pred = None
+        if self.mask_net is not None:
+            mask_scores = self.mask_net(obj_vecs.view(O, -1, 1, 1))
+            masks_pred = mask_scores.squeeze(1).sigmoid()
+
+
+        return boxes_pred, masks_pred

@@ -15,9 +15,37 @@ from GraphConvModel import GraphConvModel
 from graph import GraphTripleConvNet
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from prepareData.prepareData import coco_collate_fn, build_coco_dsets
 
+
+def calculate_model_losses(args, skip_pixel_loss, model,  img_pred,
+                           bbox, bbox_pred, masks, masks_pred,
+                           predicates):
+  total_loss = torch.zeros(1).to(img_pred[0])
+  losses = {}
+
+  loss_bbox = F.mse_loss(bbox_pred, bbox)
+  total_loss = add_loss(total_loss, loss_bbox, losses, 'bbox_pred',
+                        args['bbox_pred_loss_weight'])
+
+  if args['mask_loss_weight'] > 0 and masks is not None and masks_pred is not None:
+    mask_loss = F.binary_cross_entropy(masks_pred, masks.float())
+    total_loss = add_loss(total_loss, mask_loss, losses, 'mask_loss',
+                          args['mask_loss_weight'])
+  return total_loss, losses
+
+
+
+def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
+  curr_loss = curr_loss * weight
+  loss_dict[loss_name] = curr_loss.item()
+  if total_loss is not None:
+    total_loss += curr_loss
+  else:
+    total_loss = curr_loss
+  return total_loss
 
 def build_loaders(args):
 
@@ -55,9 +83,17 @@ def build_model(args, vocab):
       'layout_noise_dim': args['layout_noise_dim'],
     }
   model = GraphConvModel(**kwargs)
+
+
+
+  model.to(torch.device("cuda:0"))
   return model, kwargs
 
-'''
+
+def imagenet_deprocess_batch(v):
+    pass
+
+
 def check_model(args, t, loader, model):
   float_dtype = torch.cuda.FloatTensor
   long_dtype = torch.cuda.LongTensor
@@ -78,21 +114,21 @@ def check_model(args, t, loader, model):
       # Run the model as it has been run during training
       model_masks = masks
       model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=model_masks)
-      imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
+      boxes_pred, masks_pred = model_out
 
       skip_pixel_loss = False
       total_loss, losses =  calculate_model_losses(
-                                args, skip_pixel_loss, model, imgs, imgs_pred,
+                                args, skip_pixel_loss, model, imgs,
                                 boxes, boxes_pred, masks, masks_pred,
-                                predicates, predicate_scores)
+                                predicates)
 
-      total_iou += jaccard(boxes_pred, boxes)
+      total_iou += jaccard(boxes_pred.cpu().data.numpy().flatten(), boxes.cpu().data.numpy().flatten())
       total_boxes += boxes_pred.size(0)
 
       for loss_name, loss_val in losses.items():
         all_losses[loss_name].append(loss_val)
       num_samples += imgs.size(0)
-      if num_samples >= args.num_val_samples:
+      if num_samples >= args['num_val_samples']:
         break
 
     samples = {}
@@ -123,7 +159,7 @@ def check_model(args, t, loader, model):
 
   batch_data = {
     'objs': objs.detach().cpu().clone(),
-    'boxes_gt': boxes.detach().cpu().clone(), 
+    'boxes_gt': boxes.detach().cpu().clone(),
     'masks_gt': masks_to_store,
     'triples': triples.detach().cpu().clone(),
     'obj_to_img': obj_to_img.detach().cpu().clone(),
@@ -134,9 +170,11 @@ def check_model(args, t, loader, model):
   out = [mean_losses, samples, batch_data, avg_iou]
 
   return tuple(out)
-'''
+
 
 def main(args):
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     print(args)
     float_dtype = torch.cuda.FloatTensor
@@ -145,9 +183,16 @@ def main(args):
     vocab, train_loader, val_loader = build_loaders(args)
     model, model_kwargs = build_model(args, vocab)
     model.type(float_dtype)
+
+    ###########################################################################################
+    print(device)
+    model.to(device)
+    print("model is cuda?")
+    print(next(model.parameters()).is_cuda)
+
     print(model)
 
-    #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args['learning_rate'])
 
     t, epoch = 0, 0
     checkpoint = {
@@ -187,23 +232,24 @@ def main(args):
 
 
         for batch in train_loader:
-            '''
-            if t == args.eval_mode_after:
+
+            if t == args['eval_mode_after']:
                 print('switching to eval mode')
                 model.eval()
-                optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+                optimizer = torch.optim.Adam(model.parameters(), lr=args['learning_rate'])
             t += 1
-            '''
+
             batch = [tensor.cuda() for tensor in batch]
             masks = None
 
 
             if len(batch) == 7:
                 imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+                # print(batch)
             else:
                 assert False
 
-            #predicates = triples[:, 1]
+            predicates = triples[:, 1]
 
             # with timeit('forward', args['timing']): #args['timing']
             model_boxes = boxes
@@ -211,17 +257,14 @@ def main(args):
             model_out = model(objs, triples, obj_to_img,
                               boxes_gt=model_boxes, masks_gt=model_masks)
             #imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
-            vector = model_out
-            print(vector)
+            boxes_pred, masks_pred = model_out
+            #print(vector)
 
-            '''    
-            with timeit('loss', args.timing):
-                # Skip the pixel loss if using GT boxes
-                skip_pixel_loss = (model_boxes is None)
-                total_loss, losses = calculate_model_losses(
-                    args, skip_pixel_loss, model, imgs, imgs_pred,
-                    boxes, boxes_pred, masks, masks_pred,
-                    predicates, predicate_scores)
+            skip_pixel_loss = (model_boxes is None)
+            total_loss, losses = calculate_model_losses(
+                args, skip_pixel_loss, model, imgs,
+                boxes, boxes_pred, masks, masks_pred,
+                predicates)
 
 
 
@@ -231,8 +274,8 @@ def main(args):
                 continue
 
             optimizer.zero_grad()
-            with timeit('backward', args.timing):
-                total_loss.backward()
+            #with timeit('backward', args.timing):
+            total_loss.backward()
             optimizer.step()
             total_loss_d = None
             ac_loss_real = None
@@ -241,15 +284,15 @@ def main(args):
 
 
 
-            if t % args.print_every == 0:
-                print('t = %d / %d' % (t, args.num_iterations))
+            if t % args['print_every'] == 0:
+                print('t = %d / %d' % (t, args['num_iterations']))
                 for name, val in losses.items():
                     print(' G [%s]: %.4f' % (name, val))
                     checkpoint['losses'][name].append(val)
                 checkpoint['losses_ts'].append(t)
 
 
-            if t % args.checkpoint_every == 0:
+            if t % args['checkpoint_every'] == 0:
                 print('checking on train')
                 train_results = check_model(args, t, train_loader, model)
                 t_losses, t_samples, t_batch_data, t_avg_iou = train_results
@@ -278,14 +321,14 @@ def main(args):
                 checkpoint['optim_state'] = optimizer.state_dict()
                 checkpoint['counters']['t'] = t
                 checkpoint['counters']['epoch'] = epoch
-                checkpoint_path = os.path.join(args.output_dir,
-                                               '%s_with_model.pt' % args.checkpoint_name)
+                checkpoint_path = os.path.join(args['output_dir'],
+                                               '%s_with_model.pt' % args['checkpoint_name'])
                 print('Saving checkpoint to ', checkpoint_path)
                 torch.save(checkpoint, checkpoint_path)
 
                 # Save another checkpoint without any model or optim state
-                checkpoint_path = os.path.join(args.output_dir,
-                                               '%s_no_model.pt' % args.checkpoint_name)
+                checkpoint_path = os.path.join(args['output_dir'],
+                                               '%s_no_model.pt' % args['checkpoint_name'])
                 key_blacklist = ['model_state', 'optim_state', 'model_best_state',
                                  'd_obj_state', 'd_obj_optim_state', 'd_obj_best_state',
                                  'd_img_state', 'd_img_optim_state', 'd_img_best_state']
@@ -294,20 +337,19 @@ def main(args):
                     if k not in key_blacklist:
                         small_checkpoint[k] = v
                 torch.save(small_checkpoint, checkpoint_path)
-                '''
+
     return
 
 
 if __name__ == '__main__':
 
     print(torch.cuda.is_available())
-
+    print(torch.cuda.get_device_name(0))
 
     args = {
         'batch_size': 32,
         'num_workers': 4,
         'shuffle': True,
-        'collate_fn': 10,
 
         'image_size': (64, 64),
         'embedding_dim': 128,
@@ -323,10 +365,20 @@ if __name__ == '__main__':
         'num_iterations': 1000000,
         'learning_rate': 0.0001,
         'dataset': "coco",
-        'num_train_samples': 900,
-        'num_val_samples': 100,
+        'num_train_samples': 8192,
+        'num_val_samples': 1024,
         'timing': '1',
 
+        'bbox_pred_loss_weight': 10,
+        'mask_loss_weight': 0.1,
+        'eval_mode_after': 100000,
+        'print_every': 10,
+        'checkpoint_every': 5,
+        'output_dir': os.getcwd(),
+        'checkpoint_name': 'checkpoint',
+        'checkpoint_start_from': None,
+        'restore_from_checkpoint': False,
     }
 
     main(args)
+
