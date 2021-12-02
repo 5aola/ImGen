@@ -44,3 +44,6 @@ We decided to change up for PyCharm IDE instead of Jupyter, because as the proje
 ### Training our model
   - We trained the model on NVIDIA 1060 GPU with cuda for a whole night but due to lack of computational resource, we couldn't build an accurate model
   - The imporvement was visible, but there is plenty of  room for improvement with parameter and code optimalization
+
+## Run train and eval
+To start training the model only have to main.py
