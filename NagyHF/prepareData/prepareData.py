@@ -12,8 +12,6 @@ import pycocotools.mask as mask_utils
 from skimage.transform import resize as imresize
 
 
-
-
 def build_coco_dsets():
 
   dset_kwargs_train = {
@@ -42,12 +40,11 @@ def build_coco_dsets():
 
 
 class CocoSceneGraphDataset(Dataset):
-  def __init__(self, image_dir, instances_json, stuff_json=None,
-               stuff_only=False, image_size=(64, 64), mask_size=16,
+  def __init__(self, image_dir, instances_json, image_size=(64, 64), mask_size=16,
                normalize_images=True, max_samples=None,
                include_relationships=True, min_object_size=0.02,
-               min_objects_per_image=3, max_objects_per_image=8,
-               include_other=False, instance_whitelist=None, stuff_whitelist=None):
+               min_objects_per_image=2, max_objects_per_image=4,
+               include_other=False, instance_whitelist=None):
     """
     A PyTorch Dataset for loading Coco and Coco-Stuff annotations and converting
     them to scene graphs on the fly.
@@ -83,10 +80,6 @@ class CocoSceneGraphDataset(Dataset):
     """
     super(Dataset, self).__init__()
 
-    if stuff_only and stuff_json is None:
-      print('WARNING: Got stuff_only=True but stuff_json=None.')
-      print('Falling back to stuff_only=False.')
-
     self.image_dir = image_dir
     self.mask_size = mask_size
     self.max_samples = max_samples
@@ -96,11 +89,6 @@ class CocoSceneGraphDataset(Dataset):
 
     with open(instances_json, 'r') as f:
       instances_data = json.load(f)
-
-    stuff_data = None
-    if stuff_json is not None and stuff_json != '':
-      with open(stuff_json, 'r') as f:
-        stuff_data = json.load(f)
 
     self.image_ids = []
     self.image_id_to_filename = {}
@@ -118,28 +106,22 @@ class CocoSceneGraphDataset(Dataset):
       'object_name_to_idx': {},
       'pred_name_to_idx': {},
     }
+
     object_idx_to_name = {}
     all_instance_categories = []
+
     for category_data in instances_data['categories']:
       category_id = category_data['id']
       category_name = category_data['name']
       all_instance_categories.append(category_name)
       object_idx_to_name[category_id] = category_name
       self.vocab['object_name_to_idx'][category_name] = category_id
-    all_stuff_categories = []
-    if stuff_data:
-      for category_data in stuff_data['categories']:
-        category_name = category_data['name']
-        category_id = category_data['id']
-        all_stuff_categories.append(category_name)
-        object_idx_to_name[category_id] = category_name
-        self.vocab['object_name_to_idx'][category_name] = category_id
+
 
     if instance_whitelist is None:
       instance_whitelist = all_instance_categories
-    if stuff_whitelist is None:
-      stuff_whitelist = all_stuff_categories
-    category_whitelist = set(instance_whitelist) | set(stuff_whitelist)
+
+    category_whitelist = set(instance_whitelist)
 
     # Add object data from instances
     self.image_id_to_objects = defaultdict(list)
@@ -155,34 +137,6 @@ class CocoSceneGraphDataset(Dataset):
       if box_ok and category_ok and other_ok:
         self.image_id_to_objects[image_id].append(object_data)
 
-    # Add object data from stuff
-    if stuff_data:
-      image_ids_with_stuff = set()
-      for object_data in stuff_data['annotations']:
-        image_id = object_data['image_id']
-        image_ids_with_stuff.add(image_id)
-        _, _, w, h = object_data['bbox']
-        W, H = self.image_id_to_size[image_id]
-        box_area = (w * h) / (W * H)
-        box_ok = box_area > min_object_size
-        object_name = object_idx_to_name[object_data['category_id']]
-        category_ok = object_name in category_whitelist
-        other_ok = object_name != 'other' or include_other
-        if box_ok and category_ok and other_ok:
-          self.image_id_to_objects[image_id].append(object_data)
-      if stuff_only:
-        new_image_ids = []
-        for image_id in self.image_ids:
-          if image_id in image_ids_with_stuff:
-            new_image_ids.append(image_id)
-        self.image_ids = new_image_ids
-
-        all_image_ids = set(self.image_id_to_filename.keys())
-        image_ids_to_remove = all_image_ids - image_ids_with_stuff
-        for image_id in image_ids_to_remove:
-          self.image_id_to_filename.pop(image_id, None)
-          self.image_id_to_size.pop(image_id, None)
-          self.image_id_to_objects.pop(image_id, None)
 
     # COCO category labels start at 1, so use 0 for __image__
     self.vocab['object_name_to_idx']['__image__'] = 0
@@ -215,6 +169,7 @@ class CocoSceneGraphDataset(Dataset):
       'inside',
       'surrounding',
     ]
+
     self.vocab['pred_name_to_idx'] = {}
     for idx, name in enumerate(self.vocab['pred_idx_to_name']):
       self.vocab['pred_name_to_idx'][name] = idx
