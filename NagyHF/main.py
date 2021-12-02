@@ -20,10 +20,8 @@ import torch.nn.functional as F
 from prepareData.prepareData import coco_collate_fn, build_coco_dsets
 
 
-def calculate_model_losses(args, skip_pixel_loss, model,  img_pred,
-                           bbox, bbox_pred, masks, masks_pred,
-                           predicates):
-  total_loss = torch.zeros(1).to(img_pred[0])
+def calculate_model_losses(args, img, bbox, bbox_pred, masks, masks_pred):
+  total_loss = torch.zeros(1).to(img[0])
   losses = {}
 
   loss_bbox = F.mse_loss(bbox_pred, bbox)
@@ -35,7 +33,6 @@ def calculate_model_losses(args, skip_pixel_loss, model,  img_pred,
     total_loss = add_loss(total_loss, mask_loss, losses, 'mask_loss',
                           args['mask_loss_weight'])
   return total_loss, losses
-
 
 
 def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
@@ -117,10 +114,7 @@ def check_model(args, t, loader, model):
       boxes_pred, masks_pred = model_out
 
       skip_pixel_loss = False
-      total_loss, losses =  calculate_model_losses(
-                                args, skip_pixel_loss, model, imgs,
-                                boxes, boxes_pred, masks, masks_pred,
-                                predicates)
+      total_loss, losses =  calculate_model_losses(args,  imgs, boxes, boxes_pred, masks, masks_pred)
 
       total_iou += jaccard(boxes_pred.cpu().data.numpy().flatten(), boxes.cpu().data.numpy().flatten())
       total_boxes += boxes_pred.size(0)
@@ -230,7 +224,6 @@ def main(args):
             break
         epoch += 1
 
-
         for batch in train_loader:
 
             if t == args['eval_mode_after']:
@@ -241,32 +234,14 @@ def main(args):
 
             batch = [tensor.cuda() for tensor in batch]
             masks = None
+            imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
 
-
-            if len(batch) == 7:
-                imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
-                # print(batch)
-            else:
-                assert False
-
-            predicates = triples[:, 1]
-
-            # with timeit('forward', args['timing']): #args['timing']
             model_boxes = boxes
             model_masks = masks
-            model_out = model(objs, triples, obj_to_img,
-                              boxes_gt=model_boxes, masks_gt=model_masks)
-            #imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
+            model_out = model(objs, triples, obj_to_img, boxes_gt=model_boxes, masks_gt=model_masks)
             boxes_pred, masks_pred = model_out
-            #print(vector)
 
-            skip_pixel_loss = (model_boxes is None)
-            total_loss, losses = calculate_model_losses(
-                args, skip_pixel_loss, model, imgs,
-                boxes, boxes_pred, masks, masks_pred,
-                predicates)
-
-
+            total_loss, losses = calculate_model_losses(args, imgs, boxes, boxes_pred, masks, masks_pred)
 
             losses['total_loss'] = total_loss.item()
             if not math.isfinite(losses['total_loss']):
@@ -274,15 +249,8 @@ def main(args):
                 continue
 
             optimizer.zero_grad()
-            #with timeit('backward', args.timing):
             total_loss.backward()
             optimizer.step()
-            total_loss_d = None
-            ac_loss_real = None
-            ac_loss_fake = None
-            d_losses = {}
-
-
 
             if t % args['print_every'] == 0:
                 print('t = %d / %d' % (t, args['num_iterations']))
@@ -315,9 +283,6 @@ def main(args):
                 for k, v in val_losses.items():
                     checkpoint['val_losses'][k].append(v)
                 checkpoint['model_state'] = model.state_dict()
-
-
-
                 checkpoint['optim_state'] = optimizer.state_dict()
                 checkpoint['counters']['t'] = t
                 checkpoint['counters']['epoch'] = epoch
