@@ -76,7 +76,7 @@ def main(args):
     # Load the scene graphs
     with open(args['scene_graphs_json'], 'r') as f:
         scene_graphs = json.load(f)
-    print(vocab)
+
     # Run the model forward
     with torch.no_grad():
         objs, triples, obj_to_img = encode_scene_graphs(vocab, scene_graphs)
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     # required arguments for the main function
     args = {
         'checkpoint': os.path.join(os.getcwd(), 'model.pt'),
-        'scene_graphs_json': os.path.join(os.getcwd(), 'scene_graphs/figure_6_sheep.json'),
+        'scene_graphs_json': os.path.join(os.getcwd(), 'scene_graphs/inputSceneGraphs.json'),
         'output_dir': os.path.join(os.getcwd(), 'generatedImages'),
         'device': 'cpu',
     }

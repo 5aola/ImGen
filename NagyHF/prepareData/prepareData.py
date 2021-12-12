@@ -43,7 +43,7 @@ class CocoSceneGraphDataset(Dataset):
     min_object_size = 0.02
     min_objects_per_image = 2
     max_objects_per_image = 4
-    instance_whitelist = ('ocean', 'sky', 'giraffe', 'lion', 'tree', 'person')
+    instance_whitelist = ('giraffe', 'person')
     super(Dataset, self).__init__()
 
     self.image_dir = image_dir
