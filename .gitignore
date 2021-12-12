@@ -2,4 +2,5 @@ images.json
 /NagyHF/venv
 /NagyHF/checkpoint_no_model.pt
 /NagyHF/checkpoint_with_model.pt
+/NagyHF/model.pt
 /im_dataset/

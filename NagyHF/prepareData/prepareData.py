@@ -44,7 +44,7 @@ class CocoSceneGraphDataset(Dataset):
                normalize_images=True, max_samples=None,
                include_relationships=True, min_object_size=0.02,
                min_objects_per_image=2, max_objects_per_image=4,
-               include_other=False, instance_whitelist=None):
+               include_other=False, instance_whitelist=('ocean', 'sky', 'giraffe', 'lion', 'tree', 'person')):
     """
     A PyTorch Dataset for loading Coco and Coco-Stuff annotations and converting
     them to scene graphs on the fly.

@@ -2,6 +2,8 @@ import math
 import torch
 import torch.nn as nn
 
+from NagyHF.crn import RefinementNetwork
+from NagyHF.utils import boxes_to_layout, masks_to_layout
 from graph import GraphTripleConv, GraphTripleConvNet
 
 
@@ -133,12 +135,7 @@ class Sg2ImModel(nn.Module):
         obj_vecs_orig = obj_vecs
         pred_vecs = self.pred_embeddings(p)
 
-        if isinstance(self.gconv, nn.Linear):
-            obj_vecs = self.gconv(obj_vecs)
-        else:
-            obj_vecs, pred_vecs = self.gconv(obj_vecs, pred_vecs, edges)
-        if self.gconv_net is not None:
-            obj_vecs, pred_vecs = self.gconv_net(obj_vecs, pred_vecs, edges)
+        obj_vecs, pred_vecs = self.gconv_net(obj_vecs, pred_vecs, edges)
 
         boxes_pred = self.box_net(obj_vecs)
 
@@ -152,7 +149,7 @@ class Sg2ImModel(nn.Module):
         rel_aux_input = torch.cat([s_boxes, o_boxes, s_vecs, o_vecs], dim=1)
         rel_scores = self.rel_aux_net(rel_aux_input)
 
-        '''
+
         H, W = self.image_size
         
         
@@ -173,5 +170,5 @@ class Sg2ImModel(nn.Module):
             layout = torch.cat([layout, layout_noise], dim=1)
         img = self.refinement_net(layout)
         
-        '''
-        return  boxes_pred, masks_pred, rel_scores
+
+        return  boxes_pred, masks_pred, rel_scores, img
