@@ -45,5 +45,17 @@ We decided to change up for PyCharm IDE instead of Jupyter, because as the proje
   - We trained the model on NVIDIA 1060 GPU with cuda for a whole night but due to lack of computational resource, we couldn't build an accurate model
   - The imporvement was visible, but there is plenty of  room for improvement with parameter and code optimalization
 
-## Run train and eval
-To start training the model only have to main.py
+### Run the model
+In order to generate images from scene graphs, follow the next steps:
+  -download our pretrained model weights from : https://www.dropbox.com/s/zihnz2cuj009uuy/model.pt?dl=0
+  -instert the model.pt file into the NagyHF folder
+  -intall all the required libraries
+  -in order to write own scene graphs use the scene_graphs/inputSceneGraphs.json file and follow the structure
+  -we only trained for person and giraffe objects
+  -run the run.py program
+  -the generated images are visible in the generatedImages folder
+  
+ ### Documentation
+ [Documentation](/document.pdf) of the project.
+
+
