@@ -2,17 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def get_normalization_2d(channels, normalization):
-  if normalization == 'instance':
-    return nn.InstanceNorm2d(channels)
-  elif normalization == 'batch':
-    return nn.BatchNorm2d(channels)
-  elif normalization == 'none':
-    return None
-  else:
-    raise ValueError('Unrecognized normalization type "%s"' % normalization)
 
 
+# creates activation layer based on the input
 def get_activation(name):
   kwargs = {}
   if name.lower().startswith('leakyrelu'):
@@ -29,21 +21,23 @@ def get_activation(name):
   return activations[name.lower()](**kwargs)
 
 
+# A sequence of RefinementModule layers
 class RefinementNetwork(nn.Module):
-  def __init__(self, dims, normalization='instance', activation='leakyrelu'):
+  def __init__(self, dims, activation='leakyrelu'):
     super(RefinementNetwork, self).__init__()
     layout_dim = dims[0]
     self.refinement_modules = nn.ModuleList()
     for i in range(1, len(dims)):
       input_dim = 1 if i == 1 else dims[i - 1]
       output_dim = dims[i]
-      mod = RefinementModule(layout_dim, input_dim, output_dim,
-                             normalization=normalization, activation=activation)
+      mod = RefinementModule(layout_dim, input_dim, output_dim, activation=activation)
       self.refinement_modules.append(mod)
     output_conv_layers = [
-      nn.Conv2d(dims[-1], dims[-1], kernel_size=3, padding=1),
-      get_activation(activation),
-      nn.Conv2d(dims[-1], 3, kernel_size=1, padding=0)
+        nn.Conv2d(dims[-1], dims[-1], kernel_size=3, padding=1),
+        get_activation(activation),
+        nn.Conv2d(dims[-1], dims[-1], kernel_size=3, padding=1),
+        get_activation(activation),
+        nn.Conv2d(dims[-1], 3, kernel_size=1, padding=0)
     ]
     nn.init.kaiming_normal_(output_conv_layers[0].weight)
     nn.init.kaiming_normal_(output_conv_layers[2].weight)
@@ -76,19 +70,18 @@ class RefinementNetwork(nn.Module):
 
 
 
-
+# A single layer of Refinement Module, that contains BatchNorm2d and Convolutional layers
 class RefinementModule(nn.Module):
-    def __init__(self, layout_dim, input_dim, output_dim,
-                 normalization='instance', activation='leakyrelu'):
+    def __init__(self, layout_dim, input_dim, output_dim, activation='leakyrelu'):
         super(RefinementModule, self).__init__()
 
         layers = []
         layers.append(nn.Conv2d(layout_dim + input_dim, output_dim,
                                 kernel_size=3, padding=1))
-        layers.append(get_normalization_2d(output_dim, normalization))
+        layers.append(nn.BatchNorm2d(output_dim))
         layers.append(get_activation(activation))
         layers.append(nn.Conv2d(output_dim, output_dim, kernel_size=3, padding=1))
-        layers.append(get_normalization_2d(output_dim, normalization))
+        layers.append(nn.BatchNorm2d(output_dim))
         layers.append(get_activation(activation))
         layers = [layer for layer in layers if layer is not None]
         for layer in layers:

@@ -1,34 +1,17 @@
-
 import torch
 import torch.nn as nn
 
-def build_mlp(dim_list, activation='relu', batch_norm='none',
-              dropout=0, final_nonlinearity=True):
-  layers = []
-  for i in range(len(dim_list) - 1):
-    dim_in, dim_out = dim_list[i], dim_list[i + 1]
-    layers.append(nn.Linear(dim_in, dim_out))
-    final_layer = (i == len(dim_list) - 2)
-    if not final_layer or final_nonlinearity:
-      if batch_norm == 'batch':
-        layers.append(nn.BatchNorm1d(dim_out))
-      if activation == 'relu':
-        layers.append(nn.ReLU())
-      elif activation == 'leakyrelu':
-        layers.append(nn.LeakyReLU())
-    if dropout > 0:
-      layers.append(nn.Dropout(p=dropout))
-  return nn.Sequential(*layers)
+#init weights for convolution model
+from NagyHF.box_net import BoxNet
+
 
 def _init_weights(module):
   if hasattr(module, 'weight'):
     if isinstance(module, nn.Linear):
       nn.init.kaiming_normal_(module.weight)
 
+# A single layer of scene graph convolution.
 class GraphTripleConv(nn.Module):
-  """
-  A single layer of scene graph convolution.
-  """
   def __init__(self, input_dim, output_dim=None, hidden_dim=512,
                pooling='avg', mlp_normalization='none'):
     super(GraphTripleConv, self).__init__()
@@ -42,25 +25,14 @@ class GraphTripleConv(nn.Module):
     self.pooling = pooling
     net1_layers = [3 * input_dim, hidden_dim, 2 * hidden_dim + output_dim]
     net1_layers = [l for l in net1_layers if l is not None]
-    self.net1 = build_mlp(net1_layers, batch_norm=mlp_normalization)
+    self.net1 = BoxNet(net1_layers, batch_norm=mlp_normalization)
     self.net1.apply(_init_weights)
 
     net2_layers = [hidden_dim, hidden_dim, output_dim]
-    self.net2 = build_mlp(net2_layers, batch_norm=mlp_normalization)
+    self.net2 = BoxNet(net2_layers, batch_norm=mlp_normalization)
     self.net2.apply(_init_weights)
 
   def forward(self, obj_vecs, pred_vecs, edges):
-    """
-    Inputs:
-    - obj_vecs: FloatTensor of shape (O, D) giving vectors for all objects
-    - pred_vecs: FloatTensor of shape (T, D) giving vectors for all predicates
-    - edges: LongTensor of shape (T, 2) where edges[k] = [i, j] indicates the
-      presence of a triple [obj_vecs[i], pred_vecs[k], obj_vecs[j]]
-
-    Outputs:
-    - new_obj_vecs: FloatTensor of shape (O, D) giving new vectors for objects
-    - new_pred_vecs: FloatTensor of shape (T, D) giving new vectors for predicates
-    """
     dtype, device = obj_vecs.dtype, obj_vecs.device
     O, T = obj_vecs.size(0), pred_vecs.size(0)
     Din, H, Dout = self.input_dim, self.hidden_dim, self.output_dim
@@ -115,14 +87,15 @@ class GraphTripleConv(nn.Module):
 
     return new_obj_vecs, new_p_vecs
 
+# A sequence of scene graph convolution layers
 class GraphTripleConvNet(nn.Module):
-  """ A sequence of scene graph convolution layers  """
   def __init__(self, input_dim, num_layers=5, hidden_dim=512, pooling='avg',
                mlp_normalization='none'):
     super(GraphTripleConvNet, self).__init__()
 
     self.num_layers = num_layers
     self.gconvs = nn.ModuleList()
+
     gconv_kwargs = {
       'input_dim': input_dim,
       'hidden_dim': hidden_dim,

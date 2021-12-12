@@ -17,7 +17,7 @@ import torchvision.transforms as T
 
 from prepareData.prepareData import coco_collate_fn, build_coco_dsets
 
-
+# Calculate the loss after each iteration, the loss functions contains the errors of the masks and bounding boxes.
 def calculate_model_losses(skip_pixel_loss, img, img_pred, bbox, bbox_pred, masks, masks_pred):
     total_loss = torch.zeros(1).to(img)
     losses = {}
@@ -40,7 +40,7 @@ def calculate_model_losses(skip_pixel_loss, img, img_pred, bbox, bbox_pred, mask
 
     return total_loss, losses
 
-
+# Helper function for calculating total loss
 def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
     curr_loss = curr_loss * weight
     loss_dict[loss_name] = curr_loss.item()
@@ -50,17 +50,22 @@ def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
         total_loss = curr_loss
     return total_loss
 
-
+# The main function that trains the GraphConvModel's network
 def train():
     checkpoint = {
         'losses_ts': [],
         'losses': defaultdict(list)
     }
 
+    # for using our GPU
     float_dtype = torch.cuda.FloatTensor
 
-    vocab, train_dset, val_dset = build_coco_dsets()
+    # Building the dataset
+    # the vocab contains the vocabulary of the scenegraphs
+    vocab, train_dset = build_coco_dsets()
 
+    # parameters of the DataLoader.
+    #coco_collate_fn is a funtion that gets the batch and returns the images, objects, boxes, masks, triples, obj_to_img, triple_to_img
     loader_kwargs = {
         'batch_size': 32,
         'num_workers': 4,
@@ -68,18 +73,25 @@ def train():
         'collate_fn': coco_collate_fn,
     }
 
-    train_loader = DataLoader(train_dset, **loader_kwargs)
-    val_loader = DataLoader(val_dset, **loader_kwargs)
 
+    # Loading data and grouping the input data to batches, during the epoch we can iterate through the whole dataset.
+    # We are using torch.utils.data DataLoader function
+    train_loader = DataLoader(train_dset, **loader_kwargs)
+
+    # Loading the model
     model = GraphConvModel(vocab)
+
     model.to(torch.device("cuda:0"))
     model.type(float_dtype)
     print(model)
 
+
+    #We are using Adam optimizer with 0.0001 learing rate
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     iteration, epoch = 0, 0
 
+    #We are training the model trought 100000 iterations
     while iteration < 100000:
 
         print('Starting epoch %d' % epoch)
@@ -101,12 +113,12 @@ def train():
             model_boxes = boxes
             model_masks = masks
 
-
+            #forward the batch data in the model
             model_out = model(objs, triples, obj_to_img, boxes_gt=model_boxes, masks_gt=model_masks)
 
             boxes_pred, masks_pred, imgs_pred = model_out
 
-
+            #printing original and predicted images every 50 iterations
             if (iteration % 50 == 0):
                 invTrans = T.Compose([T.Normalize(mean=[0., 0., 0.],
                                                   std=[1 / 0.229, 1 / 0.224, 1 / 0.225]),
@@ -119,13 +131,11 @@ def train():
                 plt.figure()
                 plt.imshow(imagePred.permute(1, 2, 0).cpu().detach().numpy(), interpolation='nearest')
                 plt.figure()
-                # plt.imshow(imgs_pred[0].permute(1, 2, 0).cpu().detach().numpy(), interpolation='nearest')
-                # plt.figure()
                 plt.imshow(image.permute(1, 2, 0).cpu().detach().numpy(), interpolation='nearest')
                 plt.show()
 
+            #calculating the loss after the prediction
             skip_pixel_loss = (model_boxes is None)
-
             total_loss, losses = calculate_model_losses(skip_pixel_loss, imgs, imgs_pred, boxes, boxes_pred, masks,
                                                         masks_pred)
 
@@ -134,10 +144,12 @@ def train():
                 print('WARNING: Got loss = NaN, not backpropping')
                 continue
 
+            #Starting backpropagation based on the total loss of the model and stepping the optimizer
             optimizer.zero_grad()
             total_loss.backward()
             optimizer.step()
 
+            #saving the model state into the model.pt file and printing the losses
             if iteration % 100 == 0:
                 print('t = %d / %d' % (iteration, 100000))
                 for name, val in losses.items():
@@ -147,47 +159,10 @@ def train():
 
                 saveModel = {}
                 saveModel['model'] = model.state_dict()
-                checkpoint_path = os.path.join(os.getcwd(), 'model')
+                checkpoint_path = os.path.join(os.getcwd(), 'model.pt')
                 torch.save(saveModel, checkpoint_path)
     return
 
 
 if __name__ == '__main__':
-    '''
-    args = {
-        'batch_size': 32,
-        'num_workers': 4,
-        'shuffle': True,
-
-        'image_size': (64, 64),
-        'embedding_dim': 128,
-        'gconv_dim': 128,
-        'gconv_hidden_dim': 512,
-        'gconv_num_layers': 5,
-        'mlp_normalization': 'batch',
-        'refinement_dims': (1024, 512, 256, 128, 64),
-        'normalization': 'batch',
-        'activation': 'relu',
-        'mask_size': 16,
-        'layout_noise_dim': 32,
-        'num_iterations': 1000000,
-        'learning_rate': 0.0001,
-        'dataset': "coco",
-        'num_train_samples': 8192,
-        'num_val_samples': 1024,
-        'timing': '1',
-
-        'bbox_pred_loss_weight': 10,
-        'mask_loss_weight': 0.1,
-        'eval_mode_after': 100000,
-        'print_every': 10,
-        'checkpoint_every': 5,
-        'output_dir': os.getcwd(),
-        'checkpoint_name': 'checkpoint',
-        'checkpoint_start_from': None,
-        'restore_from_checkpoint': False,
-        'l1_pixel_loss_weight': 1,
-        'predicate_pred_loss_weight': 0,
-    }
-    '''
     train()

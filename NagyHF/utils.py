@@ -3,22 +3,17 @@ import torch
 import torchvision.transforms as T
 import torch.nn.functional as F
 
+
+# Calculated mean and std of the full image dataset
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
 INV_IMAGENET_MEAN = [-m for m in IMAGENET_MEAN]
 INV_IMAGENET_STD = [1.0 / s for s in IMAGENET_STD]
 
-
+# deprocessing the images in batches by inverting the standardization to the range of (0:255)
 def imagenet_deprocess_batch(imgs, rescale=True):
-  """
-  Input:
-  - imgs: FloatTensor of shape (N, C, H, W) giving preprocessed images
 
-  Output:
-  - imgs_de: ByteTensor of shape (N, C, H, W) giving deprocessed images
-    in the range [0, 255]
-  """
   if isinstance(imgs, torch.autograd.Variable):
     imgs = imgs.data
   imgs = imgs.cpu().clone()
@@ -38,6 +33,7 @@ def rescale(x):
   return x.sub(lo).div(hi - lo)
 
 
+# deprocessing one image by inverting the standardization to the range of (0:255)
 def imagenet_deprocess(rescale_image=True):
   transforms = [
     T.Normalize(mean=[0, 0, 0], std=INV_IMAGENET_STD),
@@ -48,56 +44,23 @@ def imagenet_deprocess(rescale_image=True):
   return T.Compose(transforms)
 
 
-
+# tranforming the bounding boxes to a layout
 def boxes_to_layout(vecs, boxes, obj_to_img, H, W=None, pooling='sum'):
-    """
-  Inputs:
-  - vecs: Tensor of shape (O, D) giving vectors
-  - boxes: Tensor of shape (O, 4) giving bounding boxes in the format
-    [x0, y0, x1, y1] in the [0, 1] coordinate space
-  - obj_to_img: LongTensor of shape (O,) mapping each element of vecs to
-    an image, where each element is in the range [0, N). If obj_to_img[i] = j
-    then vecs[i] belongs to image j.
-  - H, W: Size of the output
 
-  Returns:
-  - out: Tensor of shape (N, D, H, W)
-  """
     O, D = vecs.size()
     if W is None:
         W = H
 
     grid = _boxes_to_grid(boxes, H, W)
-
-    # If we don't add extra spatial dimensions here then out-of-bounds
-    # elements won't be automatically set to 0
     img_in = vecs.view(O, D, 1, 1).expand(O, D, 8, 8)
     sampled = F.grid_sample(img_in, grid)  # (O, D, H, W)
 
-    # Explicitly masking makes everything quite a bit slower.
-    # If we rely on implicit masking the interpolated boxes end up
-    # blurred around the edges, but it should be fine.
-    # mask = ((X < 0) + (X > 1) + (Y < 0) + (Y > 1)).clamp(max=1)
-    # sampled[mask[:, None]] = 0
-
-    out = _pool_samples(sampled, obj_to_img, pooling=pooling)
+    out = _pool_samples(sampled, obj_to_img)
 
     return out
 
-
+# tranforming the segmentation masks to a layout
 def masks_to_layout(vecs, boxes, masks, obj_to_img, H, W=None, pooling='sum'):
-    """
-  Inputs:
-  - vecs: Tensor of shape (O, D) giving vectors
-  - boxes: Tensor of shape (O, 4) giving bounding boxes in the format
-    [x0, y0, x1, y1] in the [0, 1] coordinate space
-  - masks: Tensor of shape (O, M, M) giving binary masks for each object
-  - obj_to_img: LongTensor of shape (O,) mapping objects to images
-  - H, W: Size of the output image.
-
-  Returns:
-  - out: Tensor of shape (N, D, H, W)
-  """
     O, D = vecs.size()
     M = masks.size(1)
     assert masks.size() == (O, M, M)
@@ -109,20 +72,10 @@ def masks_to_layout(vecs, boxes, masks, obj_to_img, H, W=None, pooling='sum'):
     img_in = vecs.view(O, D, 1, 1) * masks.float().view(O, 1, M, M)
     sampled = F.grid_sample(img_in, grid)
 
-    out = _pool_samples(sampled, obj_to_img, pooling=pooling)
+    out = _pool_samples(sampled, obj_to_img)
     return out
 
-
 def _boxes_to_grid(boxes, H, W):
-    """
-  Input:
-  - boxes: FloatTensor of shape (O, 4) giving boxes in the [x0, y0, x1, y1]
-    format in the [0, 1] coordinate space
-  - H, W: Scalars giving size of output
-
-  Returns:
-  - grid: FloatTensor of shape (O, H, W, 2) suitable for passing to grid_sample
-  """
     O = boxes.size(0)
 
     boxes = boxes.view(O, 4, 1, 1)
@@ -149,17 +102,7 @@ def _boxes_to_grid(boxes, H, W):
 
     return grid
 
-
-def _pool_samples(samples, obj_to_img, pooling='sum'):
-    """
-  Input:
-  - samples: FloatTensor of shape (O, D, H, W)
-  - obj_to_img: LongTensor of shape (O,) with each element in the range
-    [0, N) mapping elements of samples to output images
-
-  Output:
-  - pooled: FloatTensor of shape (N, D, H, W)
-  """
+def _pool_samples(samples, obj_to_img):
     dtype, device = samples.dtype, samples.device
     O, D, H, W = samples.size()
     N = obj_to_img.data.max().item() + 1
@@ -179,4 +122,24 @@ def _pool_samples(samples, obj_to_img, pooling='sum'):
     out = out / obj_counts.view(N, 1, 1, 1)
 
     return out
+
+# Normalize images for model training
+def imagenet_preprocess():
+  IMAGENET_MEAN = [0.485, 0.456, 0.406]
+  IMAGENET_STD = [0.229, 0.224, 0.225]
+  return T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD)
+
+
+# using bilinear interpolation for resizing the images to (64,64)
+class Resize(object):
+  def __init__(self, size, interp=PIL.Image.BILINEAR):
+    if isinstance(size, tuple):
+      H, W = size
+      self.size = (W, H)
+    else:
+      self.size = (size, size)
+    self.interp = interp
+
+  def __call__(self, img):
+    return img.resize(self.size, self.interp)
 

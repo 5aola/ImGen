@@ -11,9 +11,12 @@ import torchvision.transforms as T
 import pycocotools.mask as mask_utils
 from skimage.transform import resize as imresize
 
+from NagyHF.utils import imagenet_preprocess, Resize
+
 
 def build_coco_dsets():
 
+  #we used our previously downloaded dataset
   dset_kwargs_train = {
     'image_dir': "C:/Users/kosty/Desktop/ImGen/ImGen/im_dataset/train2017",
     'instances_json': "C:/Users/kosty/Desktop/ImGen/ImGen/im_dataset/annotations_trainval2017/annotations/instances_train2017.json"
@@ -25,66 +28,26 @@ def build_coco_dsets():
   print('Training dataset has %d images and %d objects' % (num_imgs, num_objs))
   print('(%.2f objects per image)' % (float(num_objs) / num_imgs))
 
-
-  dset_kwargs_val = {
-    'image_dir': "C:/Users/kosty/Desktop/ImGen/ImGen/im_dataset/val2017",
-    'instances_json': "C:/Users/kosty/Desktop/ImGen/ImGen/im_dataset/annotations_trainval2017/annotations/instances_val2017.json"
-  }
-
-  val_dset = CocoSceneGraphDataset(**dset_kwargs_val)
-
-  assert train_dset.vocab == val_dset.vocab
   vocab = json.loads(json.dumps(train_dset.vocab))
 
-  return vocab, train_dset, val_dset
+  return vocab, train_dset
 
 
 class CocoSceneGraphDataset(Dataset):
-  def __init__(self, image_dir, instances_json, image_size=(64, 64), mask_size=16,
-               normalize_images=True, max_samples=None,
-               include_relationships=True, min_object_size=0.02,
-               min_objects_per_image=2, max_objects_per_image=4,
-               include_other=False, instance_whitelist=('ocean', 'sky', 'giraffe', 'lion', 'tree', 'person')):
-    """
-    A PyTorch Dataset for loading Coco and Coco-Stuff annotations and converting
-    them to scene graphs on the fly.
+  # for loading Coco dataset and converting them to scene graphs.
+  def __init__(self, image_dir, instances_json):
 
-    Inputs:
-    - image_dir: Path to a directory where images are held
-    - instances_json: Path to a JSON file giving COCO annotations
-    - stuff_json: (optional) Path to a JSON file giving COCO-Stuff annotations
-    - stuff_only: (optional, default True) If True then only iterate over
-      images which appear in stuff_json; if False then iterate over all images
-      in instances_json.
-    - image_size: Size (H, W) at which to load images. Default (64, 64).
-    - mask_size: Size M for object segmentation masks; default 16.
-    - normalize_image: If True then normalize images by subtracting ImageNet
-      mean pixel and dividing by ImageNet std pixel.
-    - max_samples: If None use all images. Other wise only use images in the
-      range [0, max_samples). Default None.
-    - include_relationships: If True then include spatial relationships; if
-      False then only include the trivial __in_image__ relationship.
-    - min_object_size: Ignore objects whose bounding box takes up less than
-      this fraction of the image.
-    - min_objects_per_image: Ignore images which have fewer than this many
-      object annotations.
-    - max_objects_per_image: Ignore images which have more than this many
-      object annotations.
-    - include_other: If True, include COCO-Stuff annotations which have category
-      "other". Default is False, because I found that these were really noisy
-      and pretty much impossible for the system to model.
-    - instance_whitelist: None means use all instance categories. Otherwise a
-      list giving a whitelist of instance category names to use.
-    - stuff_whitelist: None means use all stuff categories. Otherwise a list
-      giving a whitelist of stuff category names to use.
-    """
+    # parameters of the accepted images
+    image_size = (64, 64)
+    mask_size = 16
+    min_object_size = 0.02
+    min_objects_per_image = 2
+    max_objects_per_image = 4
+    instance_whitelist = ('ocean', 'sky', 'giraffe', 'lion', 'tree', 'person')
     super(Dataset, self).__init__()
 
     self.image_dir = image_dir
     self.mask_size = mask_size
-    self.max_samples = max_samples
-    self.normalize_images = normalize_images
-    self.include_relationships = include_relationships
     self.set_image_size(image_size)
 
     with open(instances_json, 'r') as f:
@@ -108,18 +71,14 @@ class CocoSceneGraphDataset(Dataset):
     }
 
     object_idx_to_name = {}
-    all_instance_categories = []
 
+    # filling the vocab with objects and relationships
     for category_data in instances_data['categories']:
       category_id = category_data['id']
       category_name = category_data['name']
-      all_instance_categories.append(category_name)
       object_idx_to_name[category_id] = category_name
       self.vocab['object_name_to_idx'][category_name] = category_id
 
-
-    if instance_whitelist is None:
-      instance_whitelist = all_instance_categories
 
     category_whitelist = set(instance_whitelist)
 
@@ -133,9 +92,10 @@ class CocoSceneGraphDataset(Dataset):
       box_ok = box_area > min_object_size
       object_name = object_idx_to_name[object_data['category_id']]
       category_ok = object_name in category_whitelist
-      other_ok = object_name != 'other' or include_other
+      other_ok = object_name != 'other'
       if box_ok and category_ok and other_ok:
         self.image_id_to_objects[image_id].append(object_data)
+
 
 
     # COCO category labels start at 1, so use 0 for __image__
@@ -174,47 +134,30 @@ class CocoSceneGraphDataset(Dataset):
     for idx, name in enumerate(self.vocab['pred_idx_to_name']):
       self.vocab['pred_name_to_idx'][name] = idx
 
+  #resizing, standardizing the images in the dataset
   def set_image_size(self, image_size):
     print('called set_image_size', image_size)
     transform = [Resize(image_size), T.ToTensor()]
-    if self.normalize_images:
-      transform.append(imagenet_preprocess())
+    transform.append(imagenet_preprocess())
     self.transform = T.Compose(transform)
     self.image_size = image_size
 
+
+  #calculate the object in the dataset
   def total_objects(self):
     total_objs = 0
     for i, image_id in enumerate(self.image_ids):
-      if self.max_samples and i >= self.max_samples:
-        break
       num_objs = len(self.image_id_to_objects[image_id])
       total_objs += num_objs
     return total_objs
 
+
   def __len__(self):
-    if self.max_samples is None:
-      return len(self.image_ids)
-    return min(len(self.image_ids), self.max_samples)
+    return len(self.image_ids)
 
+  #getitem function returns the tuple of a certains image. The tuple contains the image (3, Height, Width), objects, boxes, masks and triples that contains the relatonships of the objects
   def __getitem__(self, index):
-    """
-    Get the pixels of an image, and a random synthetic scene graph for that
-    image constructed on-the-fly from its COCO object annotations. We assume
-    that the image will have height H, width W, C channels; there will be O
-    object annotations, each of which will have both a bounding box and a
-    segmentation mask of shape (M, M). There will be T triples in the scene
-    graph.
 
-    Returns a tuple of:
-    - image: FloatTensor of shape (C, H, W)
-    - objs: LongTensor of shape (O,)
-    - boxes: FloatTensor of shape (O, 4) giving boxes for objects in
-      (x0, y0, x1, y1) format, in a [0, 1] coordinate system
-    - masks: LongTensor of shape (O, M, M) giving segmentation masks for
-      objects, where 0 is background and 1 is object.
-    - triples: LongTensor of shape (T, 3) where triples[t] = [i, p, j]
-      means that (objs[i], p, objs[j]) is a triple.
-    """
     image_id = self.image_ids[index]
 
     filename = self.image_id_to_filename[image_id]
@@ -224,7 +167,6 @@ class CocoSceneGraphDataset(Dataset):
         WW, HH = image.size
         image = self.transform(image.convert('RGB'))
 
-    H, W = self.image_size
     objs, boxes, masks = [], [], []
     for object_data in self.image_id_to_objects[image_id]:
       objs.append(object_data['category_id'])
@@ -250,7 +192,7 @@ class CocoSceneGraphDataset(Dataset):
       mask = torch.from_numpy((mask > 128).astype(np.int64))
       masks.append(mask)
 
-    # Add dummy __image__ object
+    # Add __image__ object
     objs.append(self.vocab['object_name_to_idx']['__image__'])
     boxes.append(torch.FloatTensor([0, 0, 1, 1]))
     masks.append(torch.ones(self.mask_size, self.mask_size).long())
@@ -258,8 +200,6 @@ class CocoSceneGraphDataset(Dataset):
     objs = torch.LongTensor(objs)
     boxes = torch.stack(boxes, dim=0)
     masks = torch.stack(masks, dim=0)
-
-    box_areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
 
     # Compute centers of all objects
     obj_centers = []
@@ -287,13 +227,14 @@ class CocoSceneGraphDataset(Dataset):
       real_objs = (objs != __image__).nonzero().squeeze(1)
     for cur in real_objs:
       choices = [obj for obj in real_objs if obj != cur]
-      if len(choices) == 0 or not self.include_relationships:
+      if len(choices) == 0:
         break
       other = random.choice(choices)
       if random.random() > 0.5:
         s, o = cur, other
       else:
         s, o = other, cur
+
 
       # Check for inside / surrounding
       sx0, sy0, sx1, sy1 = boxes[s]
@@ -323,13 +264,12 @@ class CocoSceneGraphDataset(Dataset):
       triples.append([i, in_image, O - 1])
 
     triples = torch.LongTensor(triples)
+
     return image, objs, boxes, masks, triples
 
-
+# for decoding segmentation masks using the pycocotools API.
 def seg_to_mask(seg, width=1.0, height=1.0):
-  """
-  Tiny utility for decoding segmentation masks using the pycocotools API.
-  """
+
   if type(seg) == list:
     rles = mask_utils.frPyObjects(seg, height, width)
     rle = mask_utils.merge(rles)
@@ -339,20 +279,8 @@ def seg_to_mask(seg, width=1.0, height=1.0):
     rle = seg
   return mask_utils.decode(rle)
 
-
+# coco_collate_fn is a funtion that gets the batch and returns the images, objects, boxes, masks, triples, obj_to_img, triple_to_img
 def coco_collate_fn(batch):
-  """
-  Collate function to be used when wrapping CocoSceneGraphDataset in a
-  DataLoader. Returns a tuple of the following:
-
-  - imgs: FloatTensor of shape (N, C, H, W)
-  - objs: LongTensor of shape (O,) giving object categories
-  - boxes: FloatTensor of shape (O, 4)
-  - masks: FloatTensor of shape (O, M, M)
-  - triples: LongTensor of shape (T, 3) giving triples
-  - obj_to_img: LongTensor of shape (O,) mapping objects to images
-  - triple_to_img: LongTensor of shape (T,) mapping triples to images
-  """
   all_imgs, all_objs, all_boxes, all_masks, all_triples = [], [], [], [], []
   all_obj_to_img, all_triple_to_img = [], []
   obj_offset = 0
@@ -386,21 +314,5 @@ def coco_collate_fn(batch):
   return out
 
 
-def imagenet_preprocess():
-  IMAGENET_MEAN = [0.485, 0.456, 0.406]
-  IMAGENET_STD = [0.229, 0.224, 0.225]
-  return T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD)
 
-
-class Resize(object):
-  def __init__(self, size, interp=PIL.Image.BILINEAR):
-    if isinstance(size, tuple):
-      H, W = size
-      self.size = (W, H)
-    else:
-      self.size = (size, size)
-    self.interp = interp
-
-  def __call__(self, img):
-    return img.resize(self.size, self.interp)
 
