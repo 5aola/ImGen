@@ -68,6 +68,11 @@ We decided to change up for PyCharm IDE instead of Jupyter, because as the proje
   - Masknet is a CNN (Sequential model of UpSample, BatchNorm2D, Conv2D, and ReLU layers)
   - Outputs are box_predicates and mask_predicates
 
+### Cascaded Refinement Network
+  - After generating the scene layout, we synthesize an image that respects the object positions given in the layout.
+  - A Cascaded Refinement Network consists of a series of convolutional refinement modules.
+  - The first module takes Gaussian noise as input, and the output from the last module is passed to two final convolution layers to produce the output image.
+
 ### Training our model
   - We trained the model on NVIDIA 1060 GPU with cuda for a whole night but due to lack of computational resource, we couldn't build an accurate model
   - The imporvement was visible, but there is plenty of  room for improvement with parameter and code optimalization
