@@ -2,8 +2,9 @@
  ### Documentation
  [Documentation](/document.pdf) of the project.
  
-![264629768_456337276168409_6817270837702878284_n (1)](https://user-images.githubusercontent.com/56648499/146050465-f0e6b9ae-2667-43c1-8a76-30dfc45c925b.png)
-![264965557_426530715781451_1820228643581568133_n](https://user-images.githubusercontent.com/56648499/146050511-2dd74cb2-7c4c-4d09-b48d-aef94cc0b884.png)
+<img width="174" alt="image" src="https://user-images.githubusercontent.com/56648499/146053876-7c78a35a-7956-4abf-86c6-5e9d829953b3.png">
+![image](https://user-images.githubusercontent.com/56648499/146053905-94e72b19-84c5-4e8f-8836-7d81e7412440.png)
+
 
 Image generation from scene graphs.
 The goal of the project was to gain a deeper 
