@@ -1,15 +1,8 @@
-# ImGen!
+# ImGen - Image generation from scene graphs
  ### Documentation
  [Documentation](/document.pdf) of the project.
   
-Image generation from scene graphs.
-The goal of the project was to gain a deeper 
-understanding of graph convolutional networks and 
-image generation using scene graphs. A complex sentence 
-can often be more explicitly represented as a scene 
-graph of objects and their relationships. Scene 
-graphs are a powerful structured representation for 
-both images and language. 
+This is a university project for the subject Deep Learning in Practice with Python and LUA (VITMAV45) [2]. Our goal was to recreate and implement the publication of Johnson, Gupta, Fei-Fei (2018). Our model uses graph convolution to process input graphs, computes a scene layout by predicting bounding boxes and segmentation masks for objects, and converts the layout to an image with a cascaded refinement network. We used the COCO Dataset for training, but due to lack of computation resource, we decided to use a smaller set of objects, and we didn't implement the discriminators.
 
 ## Authors
 - Gábor Kalmár (XCCGBS)
@@ -34,6 +27,7 @@ After standardization:
 <img  alt="image" src="https://user-images.githubusercontent.com/56648499/146057299-3c38da1e-e509-4a32-9241-b22bf4fdfc75.png" width="550" height="350">
 
 After 30 epochs:
+
 <img  alt="image" src="https://user-images.githubusercontent.com/56648499/146057358-7dfe9558-bc75-4041-99d9-14beb530eb46.png" width="550" height="350">
 
 
