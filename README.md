@@ -2,16 +2,6 @@
  ### Documentation
  [Documentation](/document.pdf) of the project.
   
-  <p align="center">
-  ### Our generated pictures from graphs:
-
-  Three people                                                                                                                                         |  Two giraffes
-:-----------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------:
-<img  alt="image" src="https://user-images.githubusercontent.com/56648499/146053876-7c78a35a-7956-4abf-86c6-5e9d829953b3.png" width="150" height="150">|<img alt= "image" src="https://user-images.githubusercontent.com/56648499/146054309-ce476077-e339-4c27-98c7-a61c40b8ae3f.png" width="150" height="150">
-
-</p>
-
-
 Image generation from scene graphs.
 The goal of the project was to gain a deeper 
 understanding of graph convolutional networks and 
@@ -25,6 +15,14 @@ both images and language.
 - Gábor Kalmár (XCCGBS)
 - Márton Tárnok (GGDVB2)
 - Domonkos Kostyál (O32YUM)
+
+  ### Our generated pictures from graphs:
+
+  Three people                                                                                                                                         |  Two giraffes
+:-----------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------:
+<img  alt="image" src="https://user-images.githubusercontent.com/56648499/146053876-7c78a35a-7956-4abf-86c6-5e9d829953b3.png" width="150" height="150">|<img alt= "image" src="https://user-images.githubusercontent.com/56648499/146054309-ce476077-e339-4c27-98c7-a61c40b8ae3f.png" width="150" height="150">
+
+
 
 ## Compiling the dataset
 - We downloaded the **COCO** train database from these links:
