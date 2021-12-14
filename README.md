@@ -9,6 +9,7 @@ This is a university project for the subject [**Deep Learning in Practice with P
 
  ### Documentation
  [Documentation](/document.pdf) of the project.
+ [Hungrian presentation video of the project](https://www.youtube.com/watch?v=gWQwNVjNuxM)
 
 ### Our generated pictures from graphs:
 
