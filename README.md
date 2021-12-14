@@ -28,6 +28,12 @@ At the beginning without standardization:
 
 ![Screenshot 2021-12-11 163313](https://user-images.githubusercontent.com/56648499/146056827-b6ed15b8-5e47-438b-b710-f7eb33bd2e57.png)
 
+After standardization:
+![Screenshot 2021-12-12 131219](https://user-images.githubusercontent.com/56648499/146057290-81a56786-cbcf-4eba-bbb1-e808a3f48d43.png)
+![Screenshot 2021-12-12 130548](https://user-images.githubusercontent.com/56648499/146057299-3c38da1e-e509-4a32-9241-b22bf4fdfc75.png)
+After 30 epochs:
+![Screenshot 2021-12-12 204836](https://user-images.githubusercontent.com/56648499/146057358-7dfe9558-bc75-4041-99d9-14beb530eb46.png)
+
 
 ## Compiling the dataset
 - We downloaded the **COCO** train database from these links:
