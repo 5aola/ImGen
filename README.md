@@ -3,7 +3,9 @@
  [Documentation](/document.pdf) of the project.
  
 <img width="174" alt="image" src="https://user-images.githubusercontent.com/56648499/146053876-7c78a35a-7956-4abf-86c6-5e9d829953b3.png">
-[image](https://user-images.githubusercontent.com/56648499/146053905-94e72b19-84c5-4e8f-8836-7d81e7412440.png)
+
+![image](https://user-images.githubusercontent.com/56648499/146054309-ce476077-e339-4c27-98c7-a61c40b8ae3f.png)
+
 
 
 Image generation from scene graphs.
