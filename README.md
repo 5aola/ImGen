@@ -1,5 +1,12 @@
 # ImGen
-Image generation from scene graphs
+Image generation from scene graphs.
+The goal of the project was to gain a deeper 
+understanding of graph convolutional networks and 
+image generation using scene graphs. A complex sentence 
+can often be more explicitly represented as a scene 
+graph of objects and their relationships. Scene 
+graphs are a powerful structured representation for 
+both images and language. 
 
 ## Authors
 - Gábor Kalmár (XCCGBS)
@@ -49,7 +56,7 @@ We decided to change up for PyCharm IDE instead of Jupyter, because as the proje
 In order to generate images from scene graphs, follow the next steps:
   - download our pretrained model weights from : https://www.dropbox.com/s/zihnz2cuj009uuy/model.pt?dl=0
   - instert the model.pt file into the NagyHF folder
-  - intall all the required libraries
+  - install all the required libraries
   - in order to write own scene graphs use the scene_graphs/inputSceneGraphs.json file and follow the structure
   - we only trained for person and giraffe objects
   - run the run.py program
