@@ -34,7 +34,8 @@ After standardization:
 <img  alt="image" src="https://user-images.githubusercontent.com/56648499/146057299-3c38da1e-e509-4a32-9241-b22bf4fdfc75.png" width="550" height="350">
 
 After 30 epochs:
-![Screenshot 2021-12-12 204836](https://user-images.githubusercontent.com/56648499/146057358-7dfe9558-bc75-4041-99d9-14beb530eb46.png | width="350" height="350")
+<img  alt="image" src="https://user-images.githubusercontent.com/56648499/146057358-7dfe9558-bc75-4041-99d9-14beb530eb46.png" width="550" height="350">
+
 
 
 ## Compiling the dataset
