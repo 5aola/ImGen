@@ -1,13 +1,14 @@
 # ImGen - Image generation from scene graphs
- ### Documentation
- [Documentation](/document.pdf) of the project.
   
-This is a university project for the subject Deep Learning in Practice with Python and LUA (VITMAV45) [2]. Our goal was to recreate and implement the publication of Johnson, Gupta, Fei-Fei (2018). Our model uses graph convolution to process input graphs, computes a scene layout by predicting bounding boxes and segmentation masks for objects, and converts the layout to an image with a cascaded refinement network. We used the COCO Dataset for training, but due to lack of computation resource, we decided to use a smaller set of objects, and we didn't implement the discriminators.
+This is a university project for the subject [**Deep Learning in Practice with Python and LUA (VITMAV45)**](https://portal.vik.bme.hu/kepzes/targyak/VITMAV45/). Our goal was to recreate and implement the publication of [**Johnson, Gupta, Fei-Fei (2018)**](https://arxiv.org/pdf/1804.01622v1.pdf). Our model uses graph convolution to process input graphs, computes a scene layout by predicting bounding boxes and segmentation masks for objects, and converts the layout to an image with a cascaded refinement network. We used the COCO Dataset for training, but due to lack of computation resource, we decided to use a smaller set of objects, and we didn't implement the discriminators.
 
 ## Authors
 - Gábor Kalmár (XCCGBS)
 - Márton Tárnok (GGDVB2)
 - Domonkos Kostyál (O32YUM)
+
+ ### Documentation
+ [Documentation](/document.pdf) of the project.
 
 ### Our generated pictures from graphs:
 
