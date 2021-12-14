@@ -25,9 +25,9 @@ both images and language.
 ## Improvement during training
 
 At the beginning without standardization:
-<p align="center">
+
 ![Screenshot 2021-12-11 163313](https://user-images.githubusercontent.com/56648499/146056827-b6ed15b8-5e47-438b-b710-f7eb33bd2e57.png)
-</p>
+
 
 ## Compiling the dataset
 - We downloaded the **COCO** train database from these links:
