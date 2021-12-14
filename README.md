@@ -22,7 +22,12 @@ both images and language.
 :-----------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------:
 <img  alt="image" src="https://user-images.githubusercontent.com/56648499/146053876-7c78a35a-7956-4abf-86c6-5e9d829953b3.png" width="150" height="150">|<img alt= "image" src="https://user-images.githubusercontent.com/56648499/146054309-ce476077-e339-4c27-98c7-a61c40b8ae3f.png" width="150" height="150">
 
+## Improvement during training
 
+At the beginning without standardization:
+<p align="center">
+![Screenshot 2021-12-11 163313](https://user-images.githubusercontent.com/56648499/146056827-b6ed15b8-5e47-438b-b710-f7eb33bd2e57.png)
+</p>
 
 ## Compiling the dataset
 - We downloaded the **COCO** train database from these links:
