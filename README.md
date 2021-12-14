@@ -3,10 +3,9 @@
  [Documentation](/document.pdf) of the project.
  
   ### Our generated pictures from graphs:
-  Three people             |  Two giraffes
-:-------------------------:|:-------------------------:
-<img  alt="image" src="https://user-images.githubusercontent.com/56648499/146053876-7c78a35a-7956-4abf-86c6-5e9d829953b3.png" width="150" height="150">
- |  <img alt= "image" src="https://user-images.githubusercontent.com/56648499/146054309-ce476077-e339-4c27-98c7-a61c40b8ae3f.png" width="150" height="150">
+  Three people                                                                                                                                         |  Two giraffes
+:-----------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------:
+<img  alt="image" src="https://user-images.githubusercontent.com/56648499/146053876-7c78a35a-7956-4abf-86c6-5e9d829953b3.png" width="150" height="150">|<img alt= "image" src="https://user-images.githubusercontent.com/56648499/146054309-ce476077-e339-4c27-98c7-a61c40b8ae3f.png" width="150" height="150">
 
 
 
