@@ -26,7 +26,7 @@ both images and language.
 
 At the beginning without standardization:
 
-![Screenshot 2021-12-11 163313](https://user-images.githubusercontent.com/56648499/146056827-b6ed15b8-5e47-438b-b710-f7eb33bd2e57.png | width="350" height="350")
+![Screenshot 2021-12-11 163313](https://user-images.githubusercontent.com/56648499/146056827-b6ed15b8-5e47-438b-b710-f7eb33bd2e57.png =350x350)
 
 After standardization:
 ![Screenshot 2021-12-12 131219](https://user-images.githubusercontent.com/56648499/146057290-81a56786-cbcf-4eba-bbb1-e808a3f48d43.png | width="350" height="350")
