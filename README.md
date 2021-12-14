@@ -1,4 +1,8 @@
-# ImGen
+# ImGen!
+
+[264629768_456337276168409_6817270837702878284_n (1)](https://user-images.githubusercontent.com/56648499/146050465-f0e6b9ae-2667-43c1-8a76-30dfc45c925b.png)
+![264965557_426530715781451_1820228643581568133_n](https://user-images.githubusercontent.com/56648499/146050511-2dd74cb2-7c4c-4d09-b48d-aef94cc0b884.png)
+
 Image generation from scene graphs.
 The goal of the project was to gain a deeper 
 understanding of graph convolutional networks and 
